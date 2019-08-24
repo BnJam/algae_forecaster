@@ -1,0 +1,11 @@
+Job ID: 25190820
+Cluster: cedar
+User/Group: bsmith90/bsmith90
+State: COMPLETED (exit code 0)
+Nodes: 4
+Cores per node: 16
+CPU Utilized: 03:33:19
+CPU Efficiency: 29.85% of 11:54:40 core-walltime
+Job Wall-clock time: 00:11:10
+Memory Utilized: 16.59 GB
+Memory Efficiency: 8.64% of 192.00 GB

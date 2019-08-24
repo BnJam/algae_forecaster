@@ -1,0 +1,12 @@
+Submitted batch job 25765433
+Job ID: 25765433
+Cluster: cedar
+User/Group: bsmith90/bsmith90
+State: COMPLETED (exit code 0)
+Nodes: 1
+Cores per node: 40
+CPU Utilized: 3-17:41:14
+CPU Efficiency: 91.16% of 4-02:23:20 core-walltime
+Job Wall-clock time: 02:27:35
+Memory Utilized: 22.01 GB
+Memory Efficiency: 18.34% of 120.00 GB

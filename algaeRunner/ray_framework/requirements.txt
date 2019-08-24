@@ -1,0 +1,7 @@
+ray
+numpy
+torch
+torchvision
+netcdf4
+pillow
+tensorboardx
