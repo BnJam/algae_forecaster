@@ -342,7 +342,7 @@ class Worker():
                     # part so that we prevent torch from computing gradients.
                     with torch.no_grad():
                         pred = torch.argmax(logits, dim=1)
-                        acc = torch.mean(torch.eq(pred, x).float()) * 100.0
+                        acc = torch.mean(torch.eq(pred.view(x.size()), x).float()) * 100.0
                     # Write loss and accuracy to tensorboard, using keywords `loss`
                     # and `accuracy`.
                     tr_writer.add_scalar("loss", loss, global_step=iter_idx)
@@ -390,7 +390,7 @@ class Worker():
                             va_loss += [loss.cpu().numpy()]
                             # Compute accuracy and store as numpy
                             pred = torch.argmax(logits, dim=1)
-                            acc = torch.mean(torch.eq(pred, x).float()) * 100.0
+                            acc = torch.mean(torch.eq(pred.view(x.size()), x).float()) * 100.0
                             va_acc += [acc.cpu().numpy()]
                     # Set model back for training
                     model = model.train()
@@ -476,7 +476,7 @@ class Worker():
                 te_loss += [loss.cpu().numpy()]
                 # Compute accuracy and store as numpy
                 pred = torch.argmax(logits, dim=1)
-                acc = torch.mean(torch.eq(pred, x).float()) * 100.0
+                acc = torch.mean(torch.eq(pred.vewi(x.size()), x).float()) * 100.0
                 te_acc += [acc.cpu().numpy()]
 
         # Report Test loss and accuracy
