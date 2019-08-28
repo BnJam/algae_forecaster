@@ -19,13 +19,17 @@ from model import AutoEncoder
 from tqdm import tqdm, trange
 
 # Uncomment line below to use this class as a Ray Actor
-#@ray.remote(num_cpus=4)
+#@ray.remote(num_cpus=4) # use cpu limit
+#@ray.remote(num_gpus=1) # make use of cuda enabled GPUs 
 class Worker():
+    """
+    The worker class handled operations on tasks given
+    to it by the client. 
+    """
 
     def __init__(self, name):
         self.name = "worker-"+str(name)
-        print(self.name)
-        self.active = True
+        print(self.name) # TODO proper logging
         self.taskBuff = []
 
     def clearBuffer(self):
@@ -33,45 +37,43 @@ class Worker():
 
     
     def loadTask(self, task):
-        print(self.name+" LOADING TASK "+task)
+        print(self.name+" LOADING TASK "+task) # TODO proper logging
         self.taskBuff.append(task)
-        #print(self.taskBuff)
         return True
     
     @ray.remote
     def greyscale(self, config):
-        print("WORKER GREYSCALE")
+        print("WORKER GREYSCALE") # TODO proper logging
         futures = [self.process.remote(self, config.gsrc, f, config.gout) for f in self.taskBuff]
-        print("LOADED GREYSCALE PROCESSES")
+        print("LOADED GREYSCALE PROCESSES") # TODO proper logging
         for fy in futures:
             print(ray.get(fy))
         
 
-        print(self.name+" done greyscaling")
+        print(self.name+" done greyscaling") # TODO proper logging
         
         return self.name+" done greyscaling"
 
     @ray.remote
     def imgScale(self, config):
-        print("IMGSCALE")       
+        print("IMGSCALE")        # TODO proper logging
         futures = [self.poolscale.remote(self, f, config.scale, config.sout, config.sext) for f in self.taskBuff]
-        print("LOADED IMGSCALE PROCESSES")
+        print("LOADED IMGSCALE PROCESSES") # TODO proper logging
         for fy in futures:
             print(ray.get(fy))
 
     @ray.remote
     def train(self, config):
-        print("WORKER "+self.name+" TRAINING MODEL")
+        print("WORKER "+self.name+" TRAINING MODEL") # TODO proper logging
         ray.get(self.train.remote(self, config))
 
     @ray.remote
     def predict(self, config):
-        print("WORKER "+self.name+" TESTING MODEL")
+        print("WORKER "+self.name+" TESTING MODEL") # TODO proper logging
         ray.get(self.test.remote(self, config))
     
 
-    def killServer(self):
-        server.close()
+    def kill(self):
         self.__del__()
    
     def local_log(self, *items):
@@ -82,7 +84,7 @@ class Worker():
 
     @ray.remote
     def poolscale(self, filename, scale, out, ext):
-        print("POOLSCALE")
+        print("POOLSCALE") # TODO proper logging
         def padding(shape, scale):
             " calculates the padding to be added for a dimension for this scale "
             " shape := dimensions of image (x, y, channels) "
@@ -123,9 +125,10 @@ class Worker():
         " Open an image and dump to numpy array "
         try:
             img = Image.open(filename)
-            print("OPENED IMG FILE")
-        except:
-            print("COULD NOT OPEN IMG "+filename)
+            print("OPENED IMG FILE") # TODO proper logging
+        except Exception as e:
+            print("ERROR: "+str(e)) # TODO proper logging
+            print("COULD NOT OPEN IMG "+filename) # TODO proper logging
         #print(pic.format, pic.size, pic.mode)
         mode = img.mode
         format = img.format
@@ -148,16 +151,15 @@ class Worker():
             fname = filename.split('/')[2]
             fname = fname.split('.')[0]
             pname = out+"/"+fname+'_'+str(x)+"."+ext
-            #print(pname)
             try:
                 p.save(pname, format)
             except:
-                print("Could not save file "+pname)
+                print("Could not save file "+pname) # TODO proper logging
         print("Done scaling images")
     
     @ray.remote
     def process(self, src, filename, out):
-        print("GREYSCALE PROCESS...")
+        print("GREYSCALE PROCESS...") # TODO proper logging
         def linear_sol(x_min, x_max, y_min, y_max, x_intercept=None):
             " helper function for solving linear equations on a bounded segment"
             if (x_intercept is None):
@@ -203,12 +205,12 @@ class Worker():
                 fname = filename.split('/')[2]
                 fname = fname.split('.')[0]
                 pname = out+"/"+fname+".png"
-                print(pname)
+                print(pname) # TODO proper logging
                 img.save(pname)
             except Exception as e:
-                print("Could not save file. "+str(e))
+                print("Could not save file. "+str(e)) # TODO proper logging
         except Exception as e:
-            print("Could not open nc file: "+str(e))
+            print("Could not open nc file: "+str(e)) # TODO proper logging
     
     @ray.remote(num_gpus=1)
     def train(self, config):
@@ -283,7 +285,7 @@ class Worker():
                 # things that are required to continue training. For the model and
                 # the optimizer, use `load_state_dict`. It's actually a good idea
                 # to code the saving part first and then code this part.
-                print("Checkpoint found! Resuming")
+                print("Checkpoint found! Resuming") # TODO proper logging
                 # Read checkpoint file.
     
                 # Fix gpu -> cpu bug
@@ -328,7 +330,6 @@ class Worker():
                 logits = model.forward(x)
                 # Compute the loss
                 loss = data_loss(logits, x.float())
-                print("LOSS: "+str(loss))
                 # Compute gradients
                 loss.backward()
                 # Update parameters
@@ -347,9 +348,6 @@ class Worker():
                     # and `accuracy`.
                     tr_writer.add_scalar("loss", loss, global_step=iter_idx)
                     tr_writer.add_scalar("accuracy", acc, global_step=iter_idx)
-                    
-                    print("LOSS: "+str(loss))
-                    print("ACC: "+str(acc))
                     
                     # Save
                     torch.save({
@@ -480,7 +478,7 @@ class Worker():
                 te_acc += [acc.cpu().numpy()]
 
         # Report Test loss and accuracy
-        print("Test Loss = {}".format(np.mean(te_loss)))
-        print("Test Accuracy = {}%".format(np.mean(te_acc)))
+        print("Test Loss = {}".format(np.mean(te_loss))) # TODO proper logging
+        print("Test Accuracy = {}%".format(np.mean(te_acc))) # TODO proper logging
         
     
