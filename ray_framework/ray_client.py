@@ -121,7 +121,7 @@ class Client():
     def train(self, config):
         print("TRAINING MODEL")
         self.connect(1)
-        futures = [w.train.remote(w, config) for w in self.workerList]
+        futures = [w.train_model.remote(w, config) for w in self.workerList]
         for fy in futures:
             ray.get(fy)
 

@@ -32,15 +32,26 @@ class Worker():
         print(self.name) # TODO proper logging
         self.taskBuff = []
 
+    """
+    Clears task buffer to make room for new tasks
+    """
     def clearBuffer(self):
         self.taskBuff = []
 
-    
+    """
+    Loads tasks into the workers task buffer
+
+     TODO make worker request tasks when a space in it's 
+     buffer is available
+    """ 
     def loadTask(self, task):
         print(self.name+" LOADING TASK "+task) # TODO proper logging
         self.taskBuff.append(task)
         return True
     
+    """
+    Greyscale handler -- invokes remote greyscale operation
+    """
     @ray.remote
     def greyscale(self, config):
         print("WORKER GREYSCALE") # TODO proper logging
@@ -49,11 +60,12 @@ class Worker():
         for fy in futures:
             print(ray.get(fy))
         
-
         print(self.name+" done greyscaling") # TODO proper logging
-        
         return self.name+" done greyscaling"
 
+    """
+    Image scaling handler -- invoked remote image scale operation
+    """
     @ray.remote
     def imgScale(self, config):
         print("IMGSCALE")        # TODO proper logging
@@ -62,26 +74,40 @@ class Worker():
         for fy in futures:
             print(ray.get(fy))
 
+    """
+    Autoencoder training handler -- invokes remote training operation
+    """
     @ray.remote
-    def train(self, config):
+    def train_model(self, config):
         print("WORKER "+self.name+" TRAINING MODEL") # TODO proper logging
         ray.get(self.train.remote(self, config))
 
+    """
+    Autoencoder test/predict handler -- invokes remote test/predict operation
+    """
     @ray.remote
     def predict(self, config):
         print("WORKER "+self.name+" TESTING MODEL") # TODO proper logging
         ray.get(self.test.remote(self, config))
     
-
+    """
+    Kill object
+    """
     def kill(self):
         self.__del__()
    
+    """
+    Logging operation
+    """
     def local_log(self, *items):
         file = open("../log/worker_log/"+self.name+".txt", "a+")
         for i in items:
             file.write(i + "\n")
         file.close()
 
+    """
+    Remote operation called by imgScale
+    """
     @ray.remote
     def poolscale(self, filename, scale, out, ext):
         print("POOLSCALE") # TODO proper logging
@@ -157,6 +183,9 @@ class Worker():
                 print("Could not save file "+pname) # TODO proper logging
         print("Done scaling images")
     
+    """
+    Remote operation called by greyscale
+    """
     @ray.remote
     def process(self, src, filename, out):
         print("GREYSCALE PROCESS...") # TODO proper logging
@@ -212,6 +241,9 @@ class Worker():
         except Exception as e:
             print("Could not open nc file: "+str(e)) # TODO proper logging
     
+    """
+    Remote operation called by train
+    """
     @ray.remote(num_gpus=1)
     def train(self, config):
         """Training routine"""
@@ -412,7 +444,9 @@ class Worker():
                             "loss":loss,
                             "acc":acc
                         }, bestmodel_file)
-    
+    """
+    Remote operation for testing/predicting
+    """
     @ray.remote
     def test(self, config):
         """Testing routine"""
