@@ -270,6 +270,7 @@ class Worker():
         # Initialize training
         iter_idx = -1  # make counter start at zero
         best_va_acc = 0  # to check if best validation accuracy
+        best_loss = 1
         # Prepare checkpoint file and model file to save and load from
         checkpoint_file = os.path.join(config.save_dir, "checkpoint.pth")
         bestmodel_file = os.path.join(config.save_dir, "best_model.pth")
@@ -294,6 +295,7 @@ class Worker():
                 iter_idx = load_res["iter_idx"]
                 # Resume best va result
                 best_va_acc = load_res["best_va_acc"]
+                best_loss = load_res["best_loss"]
                 # Resume model
                 model.load_state_dict(load_res["model"])
     
@@ -328,7 +330,6 @@ class Worker():
                 logits = model.forward(x)
                 # Compute the loss
                 loss = data_loss(logits, x.float())
-                print("LOSS: "+str(loss))
                 # Compute gradients
                 loss.backward()
                 # Update parameters
@@ -340,16 +341,13 @@ class Worker():
                 if iter_idx % config.rep_intv == 0:
                     # Compute accuracy (No gradients required). We'll wrapp this
                     # part so that we prevent torch from computing gradients.
-                    with torch.no_grad():
-                        pred = torch.argmax(logits, dim=1)
-                        acc = torch.mean(torch.eq(pred.view(x.size()), x).float()) * 100.0
+                    #with torch.no_grad():
+                    #    pred = torch.argmax(logits, dim=1)
+                    #    acc = torch.mean(torch.eq(pred.view(x.size()), x).float()) * 100.0
                     # Write loss and accuracy to tensorboard, using keywords `loss`
                     # and `accuracy`.
                     tr_writer.add_scalar("loss", loss, global_step=iter_idx)
-                    tr_writer.add_scalar("accuracy", acc, global_step=iter_idx)
-                    
-                    print("LOSS: "+str(loss))
-                    print("ACC: "+str(acc))
+                    #tr_writer.add_scalar("accuracy", acc, global_step=iter_idx)
                     
                     # Save
                     torch.save({
@@ -357,9 +355,8 @@ class Worker():
                         "best_va_acc": best_va_acc,
                         "model": model.state_dict(),
                         "optimizer": optimizer.state_dict(),
-                        "loss": loss,
-                        "epoch": epoch,
-                        "acc":acc
+                        "best_loss": loss,
+                        "epoch": epoch
                     }, checkpoint_file)
     
                 # Validate results every validation interval
@@ -389,20 +386,21 @@ class Worker():
                             loss = data_loss(logits, x.float())
                             va_loss += [loss.cpu().numpy()]
                             # Compute accuracy and store as numpy
-                            pred = torch.argmax(logits, dim=1)
-                            acc = torch.mean(torch.eq(pred.view(x.size()), x).float()) * 100.0
-                            va_acc += [acc.cpu().numpy()]
+                            #pred = torch.argmax(logits, dim=1)
+                            #acc = torch.mean(torch.eq(pred.view(x.size()), x).float()) * 100.0
+                            #va_acc += [acc.cpu().numpy()]
                     # Set model back for training
                     model = model.train()
                     # Take average
                     va_loss = np.mean(va_loss)
-                    va_acc = np.mean(va_acc)
+                    #va_acc = np.mean(va_acc)
     
                     # Write to tensorboard using `va_writer`
                     va_writer.add_scalar("loss", va_loss, global_step=iter_idx)
-                    va_writer.add_scalar("accuracy", va_acc, global_step=iter_idx)
+                    #va_writer.add_scalar("accuracy", va_acc, global_step=iter_idx)
                     # Check if best accuracy
-                    if va_acc > best_va_acc:
+                    if best_loss > va_loss:
+                    #if va_acc > best_va_acc:
                         best_va_acc = va_acc
                         # Save best model using torch.save. Similar to previous
                         # save but at location defined by `bestmodel_file`
@@ -411,8 +409,7 @@ class Worker():
                             "best_va_acc": best_va_acc,
                             "model": model.state_dict(),
                             "optimizer": optimizer.state_dict(),
-                            "loss":loss,
-                            "acc":acc
+                            "best_loss": va_loss
                         }, bestmodel_file)
     
     @ray.remote
