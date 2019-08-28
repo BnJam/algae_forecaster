@@ -1,3 +1,5 @@
+psutils
+mpi4py
 ray
 numpy
 torch
