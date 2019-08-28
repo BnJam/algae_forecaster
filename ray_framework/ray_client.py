@@ -51,6 +51,9 @@ class Client():
         #self.workerList = [ray_worker.Worker.remote() for _ in range(numWorkers)]
         self.workerList = [ray_worker.Worker(i) for i in range(numWorkers)]
 
+    """
+    Operation switch based on argument configs
+    """
     def switch(self, config):
         if config.mode == "grey":
             print("GREYSCALING")
@@ -66,13 +69,16 @@ class Client():
             return 0
 
     """
-    Get input file paths
+    Get input file paths and save them into a lsit
     """
     def getTasks(self, src, ext):
         print("GETTING TASKS")
         self.taskList = glob.glob(src+"/*."+ext)
         print(self.taskList)
     
+    """
+    Invoke the clear buffer operation on the workers
+    """
     def clearWorkerBuff(self):
         for w in self.workerList:
                 print("CLEARING WORKER BUFFER")
@@ -82,6 +88,12 @@ class Client():
                     print("Could not clear buffer")
         print("CLEARED WORKERS BUFFER")
         
+    """
+    serially load tasks one at a time into 
+    workers task buffers
+
+    TODO make this a response operation to task request from workers
+    """
     def loadTasks(self):
         print("LOADING TASKS")
         while len(self.taskList) != 0:
@@ -94,6 +106,9 @@ class Client():
                     print("could not load "+currTask)
         print("LOADED ALL TASKS")
         
+    """
+    Invoke workers remote greyscaling handler
+    """
     def greyscale(self, config):
         print("PREPROCESSING: GREYSCALE")
         self.connect(config.numWorker)
@@ -101,11 +116,14 @@ class Client():
         self.getTasks(config.gsrc, "nc")
         self.loadTasks()
         futures = [w.greyscale.remote(w, config) for w in self.workerList]
+        # wait for workers to be complete
         for fy in futures:
             print(ray.get(fy))
        
     
-
+    """
+    Invoke workers remote image scaling handler
+    """
     def scaleImgs(self, config):
         print("PREPROCESSING: SCALE")
         self.connect(config.numWorker)
@@ -113,45 +131,45 @@ class Client():
         self.getTasks(config.ssrc, "png")
         self.loadTasks()
         futures = [w.imgScale.remote(w, config) for w in self.workerList]
+        # wait for workers to be complete
         for f in futures:
             print(ray.get(f))
 
-
-        
+    """
+    Invoke workers remote train_model handler
+    """    
     def train(self, config):
         print("TRAINING MODEL")
         self.connect(1)
         futures = [w.train_model.remote(w, config) for w in self.workerList]
+        # wait for workers to be complete
         for fy in futures:
             ray.get(fy)
 
+    """
+    Invoke workers remote predict handler
+    """
     def predict(self, config):
         print("TRAINING MODEL")
         self.connect(1)
         futures = [w.predict.remote(w, config) for w in self.workerList]
+        # wait for workers to be complete
         for fy in futures:
             ray.get(fy)
         
-    def wait(self):
-        while 1:
-            time.sleep(0.1)
-            #self.checkConnect()
-            #self.loadTasks()
-   
+    """
+    Kill all worker objects
+    """
     def killWorkers(self):
-        for w, p in self.workerList.items():
+        for w in self.workerList:
             try: 
-                rpyc.async_(w.root.killServer)
-            except:
-                self.addValue(p, self.notConnected)
-                self.removeValue(p, self.connected)
-                self.workersToRemove.append(w)
-                print("notConnected port: "+str(p))
-        # Bumped outside loop since dicts cannot change len at runtime
-        for w in self.workersToRemove:
-            self.workerList.pop(w)
-        self.workersToRemove = [] # Empty list to prevent violations
-            
+                w.kill()
+            except Exception as e:
+                print("Error killing worker: "+str(e))
+
+    """
+    Logging operation
+    """    
     def local_log(self, *args):
         file = open("../log/master_log/"+self.name+".txt", "a+")
         for i in args:
