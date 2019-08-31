@@ -4,6 +4,15 @@ import time
 import glob
 import ray_config as config_args
 
+class Task():
+    def __init__(self, idNum, path, attempts, operation):
+        self.idNum = idNum # id of task
+        self.path = path # path to file 
+        self.attempts = attempts #number of tries for a failed task
+        self.operation = operation # operation for the worker to perform
+    def __del__(self):
+        print("Erasing task "+str(self.idNum))
+
 class Client():
     def __init__(self, config):
         self.name = "client"
